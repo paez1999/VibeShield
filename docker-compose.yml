@@ -45,12 +45,25 @@ services:
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-supersecretchangeme}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      CORS_ORIGIN: http://localhost:5173
     ports:
       - '3000:3000'
     volumes:
       - ./backend:/app
       - /app/node_modules
+    command: npm run dev
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - '5173:5173'
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm run dev -- --host
 
 volumes:
   postgres_data:
