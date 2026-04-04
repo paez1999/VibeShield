@@ -13,14 +13,14 @@ const db = () => getFirestore()
 
 const ScanGitHubSchema = z.object({
   repo: z.string().regex(/^[\w.-]+\/[\w.-]+$/, 'Format: owner/repo'),
-  ref:  z.string().default('main'),
+  ref: z.string().default('main'),
 })
 const ScanTextSchema = z.object({
-  content:  z.string().min(1),
+  content: z.string().min(1),
   filename: z.string().default('pasted-content'),
 })
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 async function persistFindings(orgId, findings) {
   if (!findings.length) return
@@ -30,11 +30,11 @@ async function persistFindings(orgId, findings) {
     const ref = firestore.collection('secrets_found').doc()
     batch.set(ref, {
       orgId,
-      secretType:   f.type,
-      secretHash:   f.hash,
-      location:     f.location,
-      severity:     f.severity,
-      remediated:   false,
+      secretType: f.type,
+      secretHash: f.hash,
+      location: f.location,
+      severity: f.severity,
+      remediated: false,
       discoveredAt: FieldValue.serverTimestamp(),
     })
   }
@@ -48,7 +48,7 @@ async function auditLog(orgId, uid, action, meta = {}) {
   })
 }
 
-// ── Routes ───────────────────────────────────────────────────────────────────
+// ── Routes ────────────────────────────────────────────────────────────────────
 
 // GET /integrations
 router.get('/', asyncHandler(async (req, res) => {
@@ -59,7 +59,7 @@ router.get('/', asyncHandler(async (req, res) => {
   const integrations = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
   const scored = scoreAll(integrations.map((i) => ({
     ...i,
-    usedScopes:  i.usedScopes  || [],
+    usedScopes: i.usedScopes || [],
     lastRotated: i.lastRotated?.toDate() || null,
     secretsFound: 0,
   })))
@@ -67,18 +67,25 @@ router.get('/', asyncHandler(async (req, res) => {
 }))
 
 // GET /integrations/secrets/open
+// Avoid compound index by filtering in-memory after single where clause
 router.get('/secrets/open', asyncHandler(async (req, res) => {
   const { orgId } = req.user
   const snap = await db().collection('secrets_found')
     .where('orgId', '==', orgId)
-    .where('remediated', '==', false)
-    .orderBy('discoveredAt', 'desc')
     .get()
 
-  const data = snap.docs.map((d) => ({ id: d.id, ...d.data(),
-    discovered_at: d.data().discoveredAt?.toDate(),
-    secret_type:   d.data().secretType,
-  }))
+  // Filter and sort in memory — avoids needing a composite Firestore index
+  const data = snap.docs
+    .map((d) => ({ id: d.id, ...d.data(), discovered_at: d.data().discoveredAt?.toDate(), secret_type: d.data().secretType }))
+    .filter((d) => d.remediated === false)
+    .sort((a, b) => {
+      const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 }
+      const sa = severityOrder[a.severity] ?? 4
+      const sb = severityOrder[b.severity] ?? 4
+      if (sa !== sb) return sa - sb
+      return (b.discovered_at || 0) - (a.discovered_at || 0)
+    })
+
   res.json({ data, count: data.length })
 }))
 
@@ -92,11 +99,11 @@ router.post('/scan/github', asyncHandler(async (req, res) => {
   await auditLog(orgId, uid, 'github_scan', { repo, ref, scannedFiles: result.scannedFiles, findingsCount: result.findings.length })
 
   res.json({
-    message:  `Scanned ${result.scannedFiles} files in ${repo}@${result.commit}`,
+    message: `Scanned ${result.scannedFiles} files in ${repo}@${result.commit}`,
     findings: result.findings.length,
     critical: result.findings.filter((f) => f.severity === 'critical').length,
-    high:     result.findings.filter((f) => f.severity === 'high').length,
-    details:  result.findings,
+    high: result.findings.filter((f) => f.severity === 'high').length,
+    details: result.findings,
   })
 }))
 
@@ -119,48 +126,51 @@ router.get('/:type', asyncHandler(async (req, res) => {
 
   if (snap.empty) return res.status(404).json({ error: 'Integration not found' })
 
-  const doc  = snap.docs[0]
-  const data = { id: doc.id, ...doc.data() }
+  const docData = { id: snap.docs[0].id, ...snap.docs[0].data() }
   const scored = scoreIntegration({
-    type: data.type, scopes: data.scopes || [],
-    usedScopes: data.usedScopes || [],
-    lastRotated: data.lastRotated?.toDate() || null,
+    type: docData.type, scopes: docData.scopes || [],
+    usedScopes: docData.usedScopes || [],
+    lastRotated: docData.lastRotated?.toDate() || null,
     secretsFound: 0,
   })
 
+  // Get recent secrets for this org without compound index
   const secretsSnap = await db().collection('secrets_found')
-    .where('orgId', '==', orgId)
-    .where('secretType', '>=', data.type)
-    .orderBy('secretType').orderBy('discoveredAt', 'desc')
-    .limit(10).get()
+    .where('orgId', '==', orgId).get()
 
-  res.json({ data: { ...data, ...scored, recentSecrets: secretsSnap.docs.map((d) => ({ id: d.id, ...d.data() })) } })
+  const recentSecrets = secretsSnap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((d) => d.secretType?.includes(docData.type))
+    .sort((a, b) => (b.discoveredAt?.toMillis() || 0) - (a.discoveredAt?.toMillis() || 0))
+    .slice(0, 10)
+
+  res.json({ data: { ...docData, ...scored, recentSecrets } })
 }))
 
 // PATCH /integrations/:id/rotate
 router.patch('/:id/rotate', asyncHandler(async (req, res) => {
   const { orgId, uid } = req.user
   const ref = db().collection('integrations').doc(req.params.id)
-  const doc = await ref.get()
-  if (!doc.exists || doc.data().orgId !== orgId) {
+  const snap = await ref.get()
+  if (!snap.exists || snap.data().orgId !== orgId) {
     return res.status(404).json({ error: 'Integration not found' })
   }
   await ref.update({ lastRotated: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() })
   await auditLog(orgId, uid, 'integration_rotated', { integrationId: req.params.id })
-  res.json({ data: { id: doc.id, ...doc.data() } })
+  res.json({ data: { id: snap.id, ...snap.data() } })
 }))
 
 // PATCH /integrations/secrets/:id/remediate
 router.patch('/secrets/:id/remediate', asyncHandler(async (req, res) => {
   const { orgId, uid } = req.user
   const ref = db().collection('secrets_found').doc(req.params.id)
-  const doc = await ref.get()
-  if (!doc.exists || doc.data().orgId !== orgId) {
+  const snap = await ref.get()
+  if (!snap.exists || snap.data().orgId !== orgId) {
     return res.status(404).json({ error: 'Secret not found' })
   }
   await ref.update({ remediated: true, remediatedAt: FieldValue.serverTimestamp() })
   await auditLog(orgId, uid, 'secret_remediated', { secretId: req.params.id })
-  res.json({ data: { id: doc.id, ...doc.data() } })
+  res.json({ data: { id: snap.id, ...snap.data() } })
 }))
 
 export default router
