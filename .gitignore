@@ -1,5 +1,6 @@
 node_modules/
 .env
+backend/serviceAccount.json
 .env.example
 dist/
 *.log
