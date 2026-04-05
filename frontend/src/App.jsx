@@ -5,7 +5,8 @@ import AuthPage from './pages/AuthPage.jsx'
 import DashboardLayout from './components/layout/DashboardLayout.jsx'
 import OverviewPage from './pages/OverviewPage.jsx'
 import IntegrationsPage from './pages/IntegrationsPage.jsx'
-import { BreachesPage, ModerationPage, AuditPage, SettingsPage } from './pages/PlaceholderPages.jsx'
+import BreachesPage from './pages/BreachesPage.jsx'
+import { ModerationPage, AuditPage, SettingsPage } from './pages/PlaceholderPages.jsx'
 
 function RequireAuth({ children }) {
   const { user, loading } = useAuthStore()

@@ -41,15 +41,6 @@ function ComingSoon({ module, description }) {
   )
 }
 
-export function BreachesPage() {
-  return (
-    <ComingSoon
-      module="Credential Monitor"
-      description="Batch-query Have I Been Pwned, detect credential stuffing attacks, force password resets, and trigger MFA enrollment for compromised users."
-    />
-  )
-}
-
 export function ModerationPage() {
   return (
     <ComingSoon

@@ -44,3 +44,13 @@ export const integrations = {
   openSecrets: ()                 => api.get('/integrations/secrets/open'),
   remediate:   (id)               => api.patch(`/integrations/secrets/${id}/remediate`),
 }
+
+export const credentials = {
+  checkBreaches:    (emails)  => api.post('/credentials/check-breaches', { emails }),
+  breachFindings:   ()        => api.get('/credentials/breach-findings'),
+  remediateBreach:  (id)      => api.patch(`/credentials/breach-findings/${id}/remediate`),
+  stuffingAlerts:   ()        => api.get('/credentials/stuffing-alerts'),
+  users:            ()        => api.get('/credentials/users'),
+  forceReset:       (uid)     => api.post(`/credentials/force-reset/${uid}`),
+  loginEvent:       (payload) => api.post('/credentials/login-event', payload),
+}

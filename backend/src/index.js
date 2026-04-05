@@ -11,6 +11,7 @@ const serviceAccount = JSON.parse(readFileSync('./serviceAccount.json', 'utf8'))
 initializeApp({ credential: cert(serviceAccount) })
 
 import integrationsRoutes from './routes/integrations.js'
+import credentialsRoutes  from './routes/credentials.js'
 import { errorHandler }   from './middleware/errorHandler.js'
 
 const app  = express()
@@ -22,6 +23,7 @@ app.use(express.json({ limit: '1mb' }))
 app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false }))
 
 app.use('/api/integrations', integrationsRoutes)
+app.use('/api/credentials', credentialsRoutes)
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', version: '0.2.0', ts: new Date().toISOString() }))
 app.use((_req, res) => res.status(404).json({ error: 'Route not found' }))
