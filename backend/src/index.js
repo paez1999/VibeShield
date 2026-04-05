@@ -6,26 +6,30 @@ import rateLimit from 'express-rate-limit'
 import { initializeApp, cert } from 'firebase-admin/app'
 import { readFileSync } from 'fs'
 
-// Init Firebase Admin — reads serviceAccount.json
+// Firebase Admin init
 const serviceAccount = JSON.parse(readFileSync('./serviceAccount.json', 'utf8'))
 initializeApp({ credential: cert(serviceAccount) })
 
-import integrationsRoutes from './routes/integrations.js'
-import { errorHandler }   from './middleware/errorHandler.js'
+import vulnsRoutes     from './routes/vulns.js'
+import scanRoutes      from './routes/scan.js'
+import endpointRoutes  from './routes/endpoints.js'
+import { errorHandler } from './middleware/errorHandler.js'
 
 const app  = express()
 const PORT = process.env.PORT ?? 3000
 
 app.use(helmet())
 app.use(cors({ origin: process.env.CORS_ORIGIN ?? 'http://localhost:5173', credentials: true }))
-app.use(express.json({ limit: '1mb' }))
-app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false }))
+app.use(express.json({ limit: '2mb' }))
+app.use('/api', rateLimit({ windowMs: 15*60*1000, max: 300, standardHeaders: true, legacyHeaders: false }))
 
-app.use('/api/integrations', integrationsRoutes)
+app.use('/api/vulns',     vulnsRoutes)
+app.use('/api/scan',      scanRoutes)
+app.use('/api/endpoints', endpointRoutes)
 
-app.get('/health', (_req, res) => res.json({ status: 'ok', version: '0.2.0', ts: new Date().toISOString() }))
-app.use((_req, res) => res.status(404).json({ error: 'Route not found' }))
+app.get('/health', (_req, res) => res.json({ status:'ok', version:'0.3.0', ts: new Date().toISOString() }))
+app.use((_req, res) => res.status(404).json({ error:'Route not found' }))
 app.use(errorHandler)
 
-app.listen(PORT, () => console.log(`[api] VibeShield running on :${PORT}`))
+app.listen(PORT, () => console.log(`[api] VibeShield v0.3 running on :${PORT}`))
 export default app

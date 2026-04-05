@@ -3,30 +3,16 @@ import { auth } from './firebase.js'
 const BASE = '/api'
 
 async function getToken() {
-  const user = auth.currentUser
-  if (!user) return null
-  return user.getIdToken()
+  return auth.currentUser?.getIdToken() || null
 }
 
 async function request(method, path, body) {
   const headers = { 'Content-Type': 'application/json' }
   const token = await getToken()
   if (token) headers['Authorization'] = `Bearer ${token}`
-
-  const res = await fetch(`${BASE}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  })
-
+  const res = await fetch(`${BASE}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined })
   const data = await res.json().catch(() => ({}))
-
-  if (!res.ok) {
-    const err = new Error(data.error || `HTTP ${res.status}`)
-    err.status = res.status
-    throw err
-  }
-
+  if (!res.ok) { const err = new Error(data.error || `HTTP ${res.status}`); err.status = res.status; throw err }
   return data
 }
 
@@ -36,11 +22,20 @@ export const api = {
   patch: (path, body) => request('PATCH', path, body),
 }
 
-export const integrations = {
-  list:        ()                 => api.get('/integrations'),
-  scanGitHub:  (repo, ref='main') => api.post('/integrations/scan/github', { repo, ref }),
-  scanText:    (content, fname)   => api.post('/integrations/scan/text', { content, filename: fname }),
-  rotate:      (id)               => api.patch(`/integrations/${id}/rotate`),
-  openSecrets: ()                 => api.get('/integrations/secrets/open'),
-  remediate:   (id)               => api.patch(`/integrations/secrets/${id}/remediate`),
+export const vulnsApi = {
+  list:      ()       => api.get('/vulns'),
+  resolve:   (id)     => api.patch(`/vulns/${id}/resolve`),
+  ignore:    (id)     => api.patch(`/vulns/${id}/ignore`),
+}
+
+export const scansApi = {
+  scanCode: (repo, ref) => api.post('/scan/code', { repo, ref }),
+  scanApi:  (url)       => api.post('/scan/api',  { url }),
+  scanDeps: (repo)      => api.post('/scan/deps', { repo }),
+  scanText: (content, filename) => api.post('/scan/text', { content, filename }),
+  history:  ()          => api.get('/scan/history'),
+}
+
+export const endpointsApi = {
+  list: () => api.get('/endpoints'),
 }

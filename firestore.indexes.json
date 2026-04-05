@@ -1,0 +1,28 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "secrets_found",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "orgId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "remediated",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "discoveredAt",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ],
+      "density": "SPARSE_ALL"
+    }
+  ],
+  "fieldOverrides": []
+}
