@@ -5,6 +5,7 @@ const NAV = [
   { to:'/dashboard',             label:'Dashboard',       dot:'var(--red)' },
   { to:'/dashboard/vulns',       label:'Vulnerabilities', dot:'var(--amber)', badge:26 },
   { to:'/dashboard/endpoints',   label:'Endpoints',       dot:'var(--blue)',  badge:8 },
+  { to:'/dashboard/history',     label:'Scan history',    dot:'var(--border2)' },
 ]
 const SCANNERS = [
   { to:'/dashboard/scan/code',   label:'Code scan',       dot:'var(--border2)' },
@@ -12,6 +13,7 @@ const SCANNERS = [
   { to:'/dashboard/scan/deps',   label:'Dependencies',    dot:'var(--border2)' },
 ]
 const SETTINGS = [
+  { to:'/dashboard/webhooks',    label:'Webhooks',        dot:'var(--green)' },
   { to:'/dashboard/settings',    label:'Settings',        dot:'var(--border2)' },
 ]
 

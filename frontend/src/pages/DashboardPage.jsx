@@ -14,8 +14,9 @@ function scoreFromVulns(vulns) {
 }
 
 export default function DashboardPage() {
-  const [vulns, setVulns]     = useState([])
-  const [loading, setLoading] = useState(true)
+  const [vulns, setVulns]       = useState([])
+  const [scans, setScans]       = useState([])
+  const [loading, setLoading]   = useState(true)
   const [scanning, setScanning] = useState(false)
   const [scanInput, setScanInput] = useState('')
   const [scanResult, setScanResult] = useState(null)
@@ -23,7 +24,10 @@ export default function DashboardPage() {
 
   const load = () => {
     setLoading(true)
-    vulnsApi.list().then(r => setVulns(r.data || [])).catch(() => {}).finally(() => setLoading(false))
+    Promise.all([
+      vulnsApi.list().then(r => setVulns(r.data || [])).catch(() => {}),
+      scansApi.history().then(r => setScans(r.data || [])).catch(() => {}),
+    ]).finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [])
@@ -92,11 +96,12 @@ export default function DashboardPage() {
             {score < 40 ? 'Critical risk' : score < 70 ? 'Needs attention' : 'Good posture'}
           </div>
         </div>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10 }}>
-          <MetricCard label="Critical" value={critical} sub="Fix immediately" color={critical > 0 ? 'var(--red)' : 'var(--muted)'} />
-          <MetricCard label="High"     value={high}     sub="Fix this week"  color={high > 0 ? 'var(--amber)' : 'var(--muted)'} />
-          <MetricCard label="Medium"   value={medium}   sub="Plan a fix"     color={medium > 0 ? 'var(--blue)' : 'var(--muted)'} />
-          <MetricCard label="Low"      value={low}      sub="Monitor"        color="var(--muted)" />
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:10 }}>
+          <MetricCard label="Critical"   value={critical}      sub="Fix immediately" color={critical > 0 ? 'var(--red)' : 'var(--muted)'} />
+          <MetricCard label="High"       value={high}          sub="Fix this week"   color={high > 0 ? 'var(--amber)' : 'var(--muted)'} />
+          <MetricCard label="Medium"     value={medium}        sub="Plan a fix"      color={medium > 0 ? 'var(--blue)' : 'var(--muted)'} />
+          <MetricCard label="Low"        value={low}           sub="Monitor"         color="var(--muted)" />
+          <MetricCard label="Scans run"  value={scans.length}  sub="All time"        color="var(--muted)" />
         </div>
       </div>
 

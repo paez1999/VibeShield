@@ -23,9 +23,10 @@ export const api = {
 }
 
 export const vulnsApi = {
-  list:      ()       => api.get('/vulns'),
-  resolve:   (id)     => api.patch(`/vulns/${id}/resolve`),
-  ignore:    (id)     => api.patch(`/vulns/${id}/ignore`),
+  list:      ()            => api.get('/vulns'),
+  resolve:   (id)          => api.patch(`/vulns/${id}/resolve`),
+  ignore:    (id)          => api.patch(`/vulns/${id}/ignore`),
+  bulk:      (ids, action) => api.post('/vulns/bulk', { ids, action }),
 }
 
 export const scansApi = {
@@ -38,4 +39,10 @@ export const scansApi = {
 
 export const endpointsApi = {
   list: () => api.get('/endpoints'),
+}
+
+export const webhooksApi = {
+  list:   ()       => api.get('/webhooks'),
+  create: (repo)   => api.post('/webhooks', { repo }),
+  remove: (id)     => request('DELETE', `/webhooks/${id}`),
 }

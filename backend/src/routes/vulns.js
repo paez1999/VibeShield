@@ -47,4 +47,40 @@ router.patch('/:id/ignore', asyncHandler(async (req, res) => {
   res.json({ ok: true })
 }))
 
+// POST /vulns/bulk  { ids: string[], action: 'resolve'|'ignore' }
+router.post('/bulk', asyncHandler(async (req, res) => {
+  const { orgId, uid } = req.user
+  const { ids, action } = req.body ?? {}
+
+  if (!Array.isArray(ids) || !ids.length)
+    return res.status(400).json({ error: 'ids must be a non-empty array' })
+  if (!['resolve', 'ignore'].includes(action))
+    return res.status(400).json({ error: 'action must be resolve or ignore' })
+
+  const firestore  = db()
+  const update     = action === 'resolve'
+    ? { status: 'resolved', resolvedAt: FieldValue.serverTimestamp(), resolvedBy: uid }
+    : { status: 'ignored' }
+
+  // Firestore batch write limit is 500
+  const chunks = []
+  for (let i = 0; i < ids.length; i += 500) chunks.push(ids.slice(i, i + 500))
+
+  let updated = 0
+  for (const chunk of chunks) {
+    const batch = firestore.batch()
+    for (const id of chunk) {
+      const ref  = firestore.collection('vulnerabilities').doc(id)
+      const snap = await ref.get()
+      if (snap.exists && snap.data().orgId === orgId) {
+        batch.update(ref, update)
+        updated++
+      }
+    }
+    await batch.commit()
+  }
+
+  res.json({ ok: true, updated })
+}))
+
 export default router

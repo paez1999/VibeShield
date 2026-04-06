@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { Panel, Badge, SeverityDot, Btn, Empty, Spinner } from '../components/ui/index.jsx'
 import { scansApi } from '../lib/api.js'
 
-export function CodeScanPage() { return <ScanPage type="code" /> }
-export function ApiScanPage() { return <ScanPage type="api" /> }
-export function DepsScanPage() { return <ScanPage type="deps" /> }
+export function CodeScanPage() { return <ScanPage mode="code" /> }
+export function ApiScanPage() { return <ScanPage mode="api" /> }
+export function DepsScanPage() { return <ScanPage mode="deps" /> }
 
 const CONFIG = {
   code: {
@@ -36,8 +36,8 @@ const CONFIG = {
   },
 }
 
-function ScanPage({ type }) {
-  const cfg = CONFIG[type]
+export default function ScanPage({ mode = 'code' }) {
+  const cfg = CONFIG[mode]
   const [input, setInput] = useState('')
   const [input2, setInput2] = useState('')
   const [loading, setLoading] = useState(false)
@@ -46,15 +46,12 @@ function ScanPage({ type }) {
 
   const handleScan = async (e) => {
     e.preventDefault()
-    if (!input.trim()) return
-    setLoading(true)
-    setError('')
-    setResult(null)
+    setLoading(true); setResult(null); setError('')
     try {
       let res
-      if (type === 'code') res = await scans.runCode(input.trim(), input2.trim() || 'main')
-      else if (type === 'api') res = await scans.runApi(input.trim())
-      else res = await scans.runDeps(input.trim())
+      if (mode === 'code') res = await scansApi.scanCode(input.trim(), input2.trim() || 'main')
+      if (mode === 'deps') res = await scansApi.scanDeps(input.trim())
+      if (mode === 'api') res = await scansApi.scanApi(input.trim())
       setResult(res)
     } catch (err) {
       setError(err.message)
@@ -77,7 +74,7 @@ function ScanPage({ type }) {
             <div>
               <label style={{ display: 'block', fontSize: 10, color: 'var(--muted)', marginBottom: 6, letterSpacing: '1px', textTransform: 'uppercase' }}>{cfg.label}</label>
               <input value={input} onChange={e => setInput(e.target.value)} placeholder={cfg.placeholder} required
-                style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '9px 12px', color: 'var(--white)', fontFamily: 'var(--mono)', fontSize: 12, outline: 'none', transition: 'border-color .15s' }}
+                style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: '9px 12px', color: 'var(--white)', fontFamily: 'var(--mono)', fontSize: 12, outline: 'none' }}
                 onFocus={e => e.target.style.borderColor = 'var(--red)'}
                 onBlur={e => e.target.style.borderColor = 'var(--border)'}
               />
@@ -85,13 +82,13 @@ function ScanPage({ type }) {
             <div>
               <label style={{ display: 'block', fontSize: 10, color: 'var(--muted)', marginBottom: 6, letterSpacing: '1px', textTransform: 'uppercase' }}>{cfg.label2}</label>
               <input value={input2} onChange={e => setInput2(e.target.value)} placeholder={cfg.placeholder2}
-                style={{ width: 140, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '9px 12px', color: 'var(--white)', fontFamily: 'var(--mono)', fontSize: 12, outline: 'none', transition: 'border-color .15s' }}
+                style={{ width: 140, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: '9px 12px', color: 'var(--white)', fontFamily: 'var(--mono)', fontSize: 12, outline: 'none' }}
                 onFocus={e => e.target.style.borderColor = 'var(--red)'}
                 onBlur={e => e.target.style.borderColor = 'var(--border)'}
               />
             </div>
             <button type="submit" disabled={loading || !input.trim()}
-              style={{ background: loading ? 'var(--red-dim)' : 'var(--red)', border: 'none', borderRadius: 'var(--radius)', padding: '9px 20px', color: '#fff', fontFamily: 'var(--mono)', fontSize: 12, cursor: loading || !input.trim() ? 'not-allowed' : 'pointer', opacity: !input.trim() ? .6 : 1, display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
+              style={{ background: loading ? 'var(--red-dim)' : 'var(--red)', border: 'none', borderRadius: 'var(--r)', padding: '9px 20px', color: '#fff', fontFamily: 'var(--mono)', fontSize: 12, cursor: loading || !input.trim() ? 'not-allowed' : 'pointer', opacity: !input.trim() ? .6 : 1, display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
               {loading && <Spinner size={12} />}
               {loading ? 'Scanning…' : cfg.btnLabel}
             </button>
@@ -99,14 +96,14 @@ function ScanPage({ type }) {
         </form>
 
         {error && (
-          <div style={{ margin: '0 20px 20px', padding: '10px 14px', background: 'rgba(240,68,68,.08)', border: '1px solid rgba(240,68,68,.2)', borderRadius: 'var(--radius)', color: 'var(--red)', fontSize: 12 }}>
+          <div style={{ margin: '0 20px 20px', padding: '10px 14px', background: 'rgba(240,68,68,.08)', border: '1px solid rgba(240,68,68,.2)', borderRadius: 'var(--r)', color: 'var(--red)', fontSize: 12 }}>
             {error}
           </div>
         )}
       </Panel>
 
-      {/* Quick scan - paste text */}
-      {type === 'code' && <QuickTextScan />}
+      {/* Quick paste scan — only on code mode */}
+      {mode === 'code' && <QuickTextScan />}
 
       {result && <ScanResults result={result} />}
     </div>
@@ -122,10 +119,13 @@ function QuickTextScan() {
     if (!text.trim()) return
     setLoading(true)
     try {
-      const res = await scans.scanText(text, 'pasted-code')
+      const res = await scansApi.scanText(text, 'pasted-code')
       setResult(res)
-    } catch { setResult({ findings: 0, details: [] }) }
-    finally { setLoading(false) }
+    } catch {
+      setResult({ findings: 0, details: [] })
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -133,13 +133,13 @@ function QuickTextScan() {
       <div style={{ padding: 16 }}>
         <textarea value={text} onChange={e => setText(e.target.value)}
           placeholder="Paste source code, .env file, config, Terraform… VibeShield scans for secrets and vulnerabilities."
-          style={{ width: '100%', height: 120, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 12, color: 'var(--white)', fontFamily: 'var(--mono)', fontSize: 11, outline: 'none', resize: 'vertical', lineHeight: 1.6 }}
+          style={{ width: '100%', height: 120, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: 12, color: 'var(--white)', fontFamily: 'var(--mono)', fontSize: 11, outline: 'none', resize: 'vertical', lineHeight: 1.6 }}
           onFocus={e => e.target.style.borderColor = 'var(--red)'}
           onBlur={e => e.target.style.borderColor = 'var(--border)'}
         />
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10 }}>
           <button onClick={scan} disabled={loading || !text.trim()}
-            style={{ background: 'var(--red)', border: 'none', borderRadius: 'var(--radius)', padding: '7px 18px', color: '#fff', fontFamily: 'var(--mono)', fontSize: 11, cursor: loading || !text.trim() ? 'not-allowed' : 'pointer', opacity: !text.trim() ? .6 : 1 }}>
+            style={{ background: 'var(--red)', border: 'none', borderRadius: 'var(--r)', padding: '7px 18px', color: '#fff', fontFamily: 'var(--mono)', fontSize: 11, cursor: loading || !text.trim() ? 'not-allowed' : 'pointer', opacity: !text.trim() ? .6 : 1 }}>
             {loading ? 'Scanning…' : 'Scan →'}
           </button>
           {result && (
@@ -176,7 +176,7 @@ function ScanResults({ result }) {
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderBottom: '1px solid var(--border)', fontSize: 11 }}>
             <SeverityDot severity={d.severity} />
             <div style={{ flex: 1 }}>
-              <div style={{ color: 'var(--white)', fontWeight: 500 }}>{d.type}</div>
+              <div style={{ color: 'var(--white)', fontWeight: 500 }}>{d.title || d.type}</div>
               <div style={{ color: 'var(--muted)', fontSize: 10, fontFamily: 'var(--mono)', marginTop: 2 }}>{d.location}</div>
             </div>
             <Badge variant={d.severity}>{d.severity}</Badge>
