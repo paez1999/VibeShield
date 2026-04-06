@@ -1,0 +1,32 @@
+import pickle
+import subprocess
+import yaml
+from flask import Flask, request
+
+app = Flask(__name__)
+
+# Pickle deserialization of user input
+@app.route('/load')
+def load_data():
+    data = pickle.loads(request.data)
+    return str(data)
+
+# Subprocess with shell=True
+@app.route('/run')
+def run_cmd():
+    subprocess.run(f"ls {request.args['dir']}", shell=True)
+
+# Unsafe YAML load
+@app.route('/config')
+def parse_config():
+    config = yaml.load(request.data)
+    return config
+
+# SQL injection via f-string
+@app.route('/user')
+def get_user():
+    cursor.execute(f"SELECT * FROM users WHERE id = '{request.args['id']}'")
+
+# Debug mode in production
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0')

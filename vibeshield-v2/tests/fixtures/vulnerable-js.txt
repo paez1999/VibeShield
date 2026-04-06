@@ -1,0 +1,38 @@
+const express = require('express')
+const jwt = require('jsonwebtoken')
+const { exec } = require('child_process')
+const crypto = require('crypto')
+const fs = require('fs')
+
+// SQL Injection: string concatenation in query
+app.get('/user', (req, res) => {
+  db.query("SELECT * FROM users WHERE id = '" + req.params.id + "'")
+})
+
+// Command Injection: user input in exec
+app.post('/ping', (req, res) => {
+  exec("ping -c 1 " + req.body.host)
+})
+
+// Path Traversal: user input in file read
+app.get('/file', (req, res) => {
+  fs.readFileSync('/uploads/' + req.query.name)
+})
+
+// JWT decode without verify
+const payload = jwt.decode(token)
+
+// MD5 for password hashing
+const hash = crypto.createHash('md5').update(password)
+
+// Math.random for token generation
+const token = Math.random().toString(36) + 'token'
+
+// Hardcoded password
+const dbPassword = "SuperSecret123!"
+
+// eval with user input
+eval(req.body.expression + " * 2")
+
+// CORS wildcard
+app.use(cors({ origin: '*' }))
