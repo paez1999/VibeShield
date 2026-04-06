@@ -1,5 +1,5 @@
 {
-  "name": "vibeshield-v2",
+  "name": "vibeshield",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -20,6 +20,9 @@
     "stripe": "^22.0.0",
     "tar": "^7.5.13",
     "zod": "^4.3.6"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
