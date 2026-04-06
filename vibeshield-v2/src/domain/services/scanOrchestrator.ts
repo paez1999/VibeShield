@@ -6,6 +6,7 @@ import type { BillingService } from '@/domain/ports/billingService'
 import type { NewVulnerability, SeveritySummary } from '@/domain/entities/vulnerability'
 import { scanCode, type CodeFinding } from './codeScanner'
 import { scanSecrets, type SecretFinding } from './secretScanner'
+import { runSemgrep, deduplicateFindings } from './semgrepScanner'
 import { calculateScore } from './scoreCalculator'
 import { ScanLimitError, BranchNotFoundError } from '@/domain/errors'
 
@@ -130,22 +131,26 @@ export class ScanOrchestrator {
 
     await this.scanStore.updateStatus(scanId, 'scanning', { total: files.length, scanned: 0, findings: 0 })
 
-    // Step 4: Scan files
+    // Step 4: Scan files — regex + Semgrep in parallel
     const allVulns: NewVulnerability[] = []
     const allLocationHashes: string[] = []
 
-    for (const file of files) {
-      const codeFindings = scanCode(file.content, file.path)
-      const secretFindings = scanSecrets(file.content, file.path)
+    const regexFindings = files.flatMap(f => scanCode(f.content, f.path))
+    const secretFindings = files.flatMap(f => scanSecrets(f.content, f.path))
+    const [, semgrepFindings] = await Promise.all([
+      Promise.resolve(regexFindings), // already computed
+      runSemgrep(files),
+    ])
 
-      for (const f of codeFindings) {
-        allVulns.push(codeFindingToVuln(f, scanId, orgId))
-        allLocationHashes.push(f.locationHash)
-      }
-      for (const s of secretFindings) {
-        allVulns.push(secretToVuln(s, scanId, orgId))
-        allLocationHashes.push(s.locationHash)
-      }
+    const codeFindings = deduplicateFindings(regexFindings, semgrepFindings)
+
+    for (const f of codeFindings) {
+      allVulns.push(codeFindingToVuln(f, scanId, orgId))
+      allLocationHashes.push(f.locationHash)
+    }
+    for (const s of secretFindings) {
+      allVulns.push(secretToVuln(s, scanId, orgId))
+      allLocationHashes.push(s.locationHash)
     }
 
     await this.scanStore.updateStatus(scanId, 'scanning', {
