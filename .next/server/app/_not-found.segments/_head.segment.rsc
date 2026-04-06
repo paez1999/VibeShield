@@ -1,0 +1,6 @@
+1:"$Sreact.fragment"
+2:I[33640,["/_next/static/chunks/09ztrg~28s9de.js","/_next/static/chunks/17qeocjvt_82c.js","/_next/static/chunks/0~_yi9lrn31_7.js"],"ViewportBoundary"]
+3:I[33640,["/_next/static/chunks/09ztrg~28s9de.js","/_next/static/chunks/17qeocjvt_82c.js","/_next/static/chunks/0~_yi9lrn31_7.js"],"MetadataBoundary"]
+4:"$Sreact.suspense"
+5:I[86594,["/_next/static/chunks/09ztrg~28s9de.js","/_next/static/chunks/17qeocjvt_82c.js","/_next/static/chunks/0~_yi9lrn31_7.js"],"IconMark"]
+0:{"rsc":["$","$1","h",{"children":[["$","meta",null,{"name":"robots","content":"noindex"}],["$","$L2",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]}],["$","div",null,{"hidden":true,"children":["$","$L3",null,{"children":["$","$4",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"VibeShield — Security for Vibe-Coded Apps"}],["$","meta","1",{"name":"description","content":"Scan your AI-generated code for vulnerabilities, exposed secrets, and security misconfigurations."}],["$","link","2",{"rel":"icon","href":"/favicon.ico?favicon.0x3dzn~oxb6tn.ico","sizes":"256x256","type":"image/x-icon"}],["$","$L5","3",{}]]}]}]}],null]}],"isPartial":false,"staleTime":300,"varyParams":null,"buildId":"7L_83o1F_F81eszlP_S25"}

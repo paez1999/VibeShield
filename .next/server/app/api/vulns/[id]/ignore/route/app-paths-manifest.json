@@ -1,0 +1,3 @@
+{
+  "/api/vulns/[id]/ignore/route": "app/api/vulns/[id]/ignore/route.js"
+}

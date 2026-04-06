@@ -1,0 +1,16 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/dashboard/layout,_N_T_/dashboard/vulns/layout,_N_T_/dashboard/vulns/page,_N_T_/dashboard/vulns"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/dashboard/vulns/__PAGE__",
+    "/dashboard/vulns",
+    "/dashboard",
+    "/_index",
+    "/_head"
+  ]
+}
