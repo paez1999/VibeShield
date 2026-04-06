@@ -1,0 +1,23 @@
+CREATE TABLE vulnerabilities (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id uuid NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+  scan_id uuid NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
+  check_id text NOT NULL,
+  location_hash text NOT NULL,
+  title text NOT NULL,
+  description text NOT NULL,
+  category text NOT NULL,
+  severity text NOT NULL,
+  status text NOT NULL DEFAULT 'open',
+  location text,
+  code_snippet text,
+  fix_prompt text,
+  ai_explanation text,
+  source text NOT NULL,
+  first_seen_at timestamptz NOT NULL DEFAULT now(),
+  resolved_at timestamptz,
+  resolved_by uuid REFERENCES auth.users(id),
+  UNIQUE (org_id, check_id, location_hash),
+  CONSTRAINT vulns_severity_check CHECK (severity IN ('critical', 'high', 'medium', 'low', 'info')),
+  CONSTRAINT vulns_status_check CHECK (status IN ('open', 'resolved', 'ignored', 'auto_resolved'))
+);
