@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION auth.user_org_id()
+CREATE OR REPLACE FUNCTION public.user_org_id()
 RETURNS uuid AS $$
   SELECT org_id FROM public.org_members WHERE user_id = auth.uid() LIMIT 1;
 $$ LANGUAGE sql STABLE SECURITY DEFINER;

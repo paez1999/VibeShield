@@ -2,7 +2,7 @@ CREATE OR REPLACE FUNCTION public.vuln_summary_by_org(p_org_id uuid)
 RETURNS jsonb AS $$
 BEGIN
   -- Verify caller owns this org (returns null for service role, which is fine)
-  IF auth.user_org_id() IS NOT NULL AND auth.user_org_id() != p_org_id THEN
+  IF public.user_org_id() IS NOT NULL AND public.user_org_id() != p_org_id THEN
     RETURN '{"critical":0,"high":0,"medium":0,"low":0,"info":0}'::jsonb;
   END IF;
 
