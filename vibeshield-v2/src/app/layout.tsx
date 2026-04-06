@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { AuthProvider } from '@/components/auth/auth-provider'
 
 export const metadata: Metadata = {
   title: 'VibeShield — Security for Vibe-Coded Apps',
@@ -14,7 +15,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-bg text-text min-h-screen">
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   )
