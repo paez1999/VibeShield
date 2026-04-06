@@ -3,7 +3,7 @@ import type { Check } from './types'
 export const UNIVERSAL_CHECKS: Check[] = [
   {
     id: 'sql-concat',
-    category: 'injection',
+    category: 'SQL Injection',
     severity: 'critical',
     title: 'SQL Injection via String Concatenation',
     description:
@@ -14,7 +14,7 @@ export const UNIVERSAL_CHECKS: Check[] = [
   },
   {
     id: 'command-injection',
-    category: 'injection',
+    category: 'Command Injection',
     severity: 'critical',
     title: 'Command Injection via User Input',
     description:

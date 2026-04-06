@@ -3,7 +3,7 @@ import type { Check } from './types'
 export const PYTHON_CHECKS: Check[] = [
   {
     id: 'pickle-deserialize',
-    category: 'injection',
+    category: 'Unsafe Deserialization',
     severity: 'critical',
     title: 'Unsafe Pickle Deserialization',
     description:
@@ -14,7 +14,7 @@ export const PYTHON_CHECKS: Check[] = [
   },
   {
     id: 'subprocess-shell',
-    category: 'injection',
+    category: 'Command Injection',
     severity: 'critical',
     title: 'Command Injection via subprocess with shell=True',
     description:
