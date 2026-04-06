@@ -69,6 +69,54 @@ describe('GitHubCodeRepository', () => {
     })
   })
 
+  describe('fetchFiles', () => {
+    const opts = {
+      skip: /node_modules\/|\.git\//i,
+      relevant: /\.(js|ts|py|go)$/i,
+      maxFiles: 150,
+      maxFileSize: 256 * 1024,
+    }
+
+    it('falls back to tree+blob when tarball fails', async () => {
+      // Tarball fetch fails
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 500 })
+      // Fallback: fetchTree
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          tree: [
+            { path: 'src/app.ts', sha: 'sha1', size: 100, type: 'blob' },
+            { path: 'node_modules/foo.ts', sha: 'sha2', size: 50, type: 'blob' },
+          ],
+        }),
+      })
+      // Fallback: fetchFileContent for app.ts
+      const content = Buffer.from('const x = 1').toString('base64')
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ content }),
+      })
+
+      const files = await repo.fetchFiles('owner/repo', 'abc123', opts)
+      expect(files).toHaveLength(1)
+      expect(files[0].path).toBe('src/app.ts')
+      expect(files[0].content).toBe('const x = 1')
+    })
+
+    it('falls back when tarball fetch throws', async () => {
+      // Tarball fetch throws
+      mockFetch.mockRejectedValueOnce(new Error('network error'))
+      // Fallback: fetchTree
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ tree: [] }),
+      })
+
+      const files = await repo.fetchFiles('owner/repo', 'abc123', opts)
+      expect(files).toEqual([])
+    })
+  })
+
   describe('error handling', () => {
     it('throws AccessDeniedError on 403', async () => {
       mockFetch.mockResolvedValueOnce({ ok: false, status: 403 })

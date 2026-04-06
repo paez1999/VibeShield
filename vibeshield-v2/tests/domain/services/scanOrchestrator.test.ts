@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ScanOrchestrator } from '@/domain/services/scanOrchestrator'
-import type { CodeRepository, FileEntry } from '@/domain/ports/codeRepository'
+import type { CodeRepository } from '@/domain/ports/codeRepository'
 import type { ScanStore } from '@/domain/ports/scanStore'
 import type { VulnStore } from '@/domain/ports/vulnStore'
 import type { AiAnalyzer } from '@/domain/ports/aiAnalyzer'
@@ -12,10 +12,11 @@ import { ScanLimitError, BranchNotFoundError } from '@/shared/errors'
 function makeCodeRepo(overrides: Partial<CodeRepository> = {}): CodeRepository {
   return {
     resolveRef: vi.fn().mockResolvedValue('sha123'),
-    fetchTree: vi.fn().mockResolvedValue([
-      { path: 'src/index.ts', sha: 'file-sha-1', size: 100, type: 'blob' } as FileEntry,
-    ]),
+    fetchTree: vi.fn().mockResolvedValue([]),
     fetchFileContent: vi.fn().mockResolvedValue('const x = 1;'),
+    fetchFiles: vi.fn().mockResolvedValue([
+      { path: 'src/index.ts', content: 'const x = 1;' },
+    ]),
     ...overrides,
   }
 }
@@ -129,8 +130,9 @@ describe('ScanOrchestrator', () => {
   it('fetches tree and scans files', async () => {
     await orchestrator.runCodeScan('org-1', 'user-1', 'owner/repo', 'main')
 
-    expect(codeRepo.fetchTree).toHaveBeenCalledWith('owner/repo', 'sha123')
-    expect(codeRepo.fetchFileContent).toHaveBeenCalledWith('owner/repo', 'file-sha-1')
+    expect(codeRepo.fetchFiles).toHaveBeenCalledWith('owner/repo', 'sha123', expect.objectContaining({
+      maxFiles: 150,
+    }))
   })
 
   // 6. upserts findings and auto-resolves stale vulns
@@ -151,7 +153,9 @@ describe('ScanOrchestrator', () => {
     // pattern: /(?:query|execute|raw)\s*\(\s*[`"'].*?\$\{|(?:query|execute|raw)\s*\(\s*['"].*?\+\s*(?:req\.|params\.|body\.|args)/gim
     const vulnerableContent = `db.query("SELECT * FROM users WHERE id = " + req.body.id)`
     codeRepo = makeCodeRepo({
-      fetchFileContent: vi.fn().mockResolvedValue(vulnerableContent),
+      fetchFiles: vi.fn().mockResolvedValue([
+        { path: 'src/index.ts', content: vulnerableContent },
+      ]),
     })
     orchestrator = new ScanOrchestrator(codeRepo, scanStore, vulnStore, aiAnalyzer, billing)
 

@@ -1,4 +1,4 @@
-import type { CodeRepository, FileEntry } from '@/domain/ports/codeRepository'
+import type { CodeRepository } from '@/domain/ports/codeRepository'
 import type { ScanStore } from '@/domain/ports/scanStore'
 import type { VulnStore } from '@/domain/ports/vulnStore'
 import type { AiAnalyzer, Finding } from '@/domain/ports/aiAnalyzer'
@@ -17,29 +17,6 @@ const RELEVANT_EXTENSIONS = /\.(ts|tsx|js|jsx|mjs|cjs|py|go|java|rb|php|cs|cpp|c
 
 const MAX_FILES = 150
 const MAX_FILE_SIZE = 256 * 1024 // 256 KB
-const BATCH_SIZE = 10
-
-// ── Helper functions ──────────────────────────────────────────────────────────
-
-function filterScannable(tree: FileEntry[]): FileEntry[] {
-  return tree
-    .filter(
-      entry =>
-        entry.type === 'blob' &&
-        !SKIP_PATHS.test(entry.path) &&
-        RELEVANT_EXTENSIONS.test(entry.path) &&
-        entry.size <= MAX_FILE_SIZE,
-    )
-    .slice(0, MAX_FILES)
-}
-
-function chunk<T>(arr: T[], size: number): T[][] {
-  const chunks: T[][] = []
-  for (let i = 0; i < arr.length; i += size) {
-    chunks.push(arr.slice(i, i + size))
-  }
-  return chunks
-}
 
 function codeFindingToVuln(f: CodeFinding, scanId: string, orgId: string): NewVulnerability {
   return {
@@ -143,43 +120,39 @@ export class ScanOrchestrator {
       throw new BranchNotFoundError(`Ref "${ref}" not found in repository "${repo}"`)
     }
 
-    const tree = await this.codeRepo.fetchTree(repo, sha)
-    const files = filterScannable(tree)
+    // Fetch all files in one tarball (falls back to tree+blob internally)
+    const files = await this.codeRepo.fetchFiles(repo, sha, {
+      skip: SKIP_PATHS,
+      relevant: RELEVANT_EXTENSIONS,
+      maxFiles: MAX_FILES,
+      maxFileSize: MAX_FILE_SIZE,
+    })
 
     await this.scanStore.updateStatus(scanId, 'scanning', { total: files.length, scanned: 0, findings: 0 })
 
-    // Step 4: Scan in batches
+    // Step 4: Scan files
     const allVulns: NewVulnerability[] = []
     const allLocationHashes: string[] = []
-    let scannedCount = 0
 
-    const batches = chunk(files, BATCH_SIZE)
-    for (const batch of batches) {
-      await Promise.all(
-        batch.map(async file => {
-          const content = await this.codeRepo.fetchFileContent(repo, file.sha)
+    for (const file of files) {
+      const codeFindings = scanCode(file.content, file.path)
+      const secretFindings = scanSecrets(file.content, file.path)
 
-          const codeFindings = scanCode(content, file.path)
-          const secretFindings = scanSecrets(content, file.path)
-
-          for (const f of codeFindings) {
-            allVulns.push(codeFindingToVuln(f, scanId, orgId))
-            allLocationHashes.push(f.locationHash)
-          }
-          for (const s of secretFindings) {
-            allVulns.push(secretToVuln(s, scanId, orgId))
-            allLocationHashes.push(s.locationHash)
-          }
-        }),
-      )
-
-      scannedCount += batch.length
-      await this.scanStore.updateStatus(scanId, 'scanning', {
-        total: files.length,
-        scanned: scannedCount,
-        findings: allVulns.length,
-      })
+      for (const f of codeFindings) {
+        allVulns.push(codeFindingToVuln(f, scanId, orgId))
+        allLocationHashes.push(f.locationHash)
+      }
+      for (const s of secretFindings) {
+        allVulns.push(secretToVuln(s, scanId, orgId))
+        allLocationHashes.push(s.locationHash)
+      }
     }
+
+    await this.scanStore.updateStatus(scanId, 'scanning', {
+      total: files.length,
+      scanned: files.length,
+      findings: allVulns.length,
+    })
 
     // Step 5: Store findings
     if (allVulns.length > 0) {
@@ -195,7 +168,7 @@ export class ScanOrchestrator {
     // Step 7: AI enrichment (paid plans only)
     await this.scanStore.updateStatus(scanId, 'analyzing', {
       total: files.length,
-      scanned: scannedCount,
+      scanned: files.length,
       findings: allVulns.length,
     })
 
