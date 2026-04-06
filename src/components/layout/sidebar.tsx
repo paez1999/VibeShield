@@ -2,29 +2,27 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/hooks/use-auth'
 
-const NAV = [
-  { to: '/dashboard', label: 'Dashboard' },
-  { to: '/dashboard/vulns', label: 'Vulnerabilities' },
-  { to: '/dashboard/history', label: 'Scan history' },
-]
-const SCANNERS = [
+interface NavItem { to: string; label: string; badge?: number }
+
+const SCANNERS: NavItem[] = [
   { to: '/dashboard/scan/code', label: 'Code scan' },
   { to: '/dashboard/scan/api', label: 'API scan' },
   { to: '/dashboard/scan/deps', label: 'Dependencies' },
 ]
-const CONFIG = [
+const CONFIG: NavItem[] = [
   { to: '/dashboard/billing', label: 'Billing' },
   { to: '/dashboard/settings', label: 'Settings' },
 ]
 
-function NavSection({ label, items }: { label: string; items: typeof NAV }) {
+function NavSection({ label, items }: { label: string; items: NavItem[] }) {
   const pathname = usePathname()
   return (
     <div className="pt-3">
       <div className="px-3.5 pb-2 text-[10px] text-muted tracking-[2px]">{label}</div>
-      {items.map(({ to, label }) => {
+      {items.map(({ to, label, badge }) => {
         const isActive = to === '/dashboard' ? pathname === to : pathname.startsWith(to)
         return (
           <Link
@@ -37,6 +35,11 @@ function NavSection({ label, items }: { label: string; items: typeof NAV }) {
             }`}
           >
             {label}
+            {badge && badge > 0 && (
+              <span className="ml-auto bg-red/20 text-red text-[9px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                {badge > 99 ? '99+' : badge}
+              </span>
+            )}
           </Link>
         )
       })}
@@ -46,6 +49,22 @@ function NavSection({ label, items }: { label: string; items: typeof NAV }) {
 
 export function Sidebar() {
   const { user, signOut } = useAuth()
+  const [vulnCount, setVulnCount] = useState(0)
+
+  useEffect(() => {
+    fetch('/api/vulns/summary', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data) setVulnCount((data.critical || 0) + (data.high || 0) + (data.medium || 0) + (data.low || 0))
+      })
+      .catch(() => {})
+  }, [])
+
+  const navItems: NavItem[] = [
+    { to: '/dashboard', label: 'Dashboard' },
+    { to: '/dashboard/vulns', label: 'Vulnerabilities', badge: vulnCount || undefined },
+    { to: '/dashboard/history', label: 'Scan history' },
+  ]
 
   return (
     <aside className="w-[200px] bg-surface border-r border-border flex flex-col shrink-0">
@@ -60,7 +79,7 @@ export function Sidebar() {
         <span className="font-display font-extrabold text-base text-white">VibeShield</span>
       </div>
 
-      <NavSection label="OVERVIEW" items={NAV} />
+      <NavSection label="OVERVIEW" items={navItems} />
       <div className="h-px bg-border my-2" />
       <NavSection label="SCANNERS" items={SCANNERS} />
       <div className="h-px bg-border my-2" />

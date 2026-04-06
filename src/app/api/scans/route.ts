@@ -116,6 +116,62 @@ export async function POST(req: NextRequest) {
       return jsonOk({ scanId: scan.id, status: 'complete', findings: result.findings.length, endpoints: result.endpoints }, 201)
     }
 
+    // Deps scans run inline
+    if (type === 'deps') {
+      await supabase.from('scans').update({ status: 'scanning' }).eq('id', scan.id)
+
+      const { scanDeps } = await import('@/domain/services/depScanner')
+      const ghToken = process.env.GITHUB_TOKEN || ''
+      const headers: Record<string, string> = { 'Accept': 'application/vnd.github.v3.raw', 'User-Agent': 'VibeShield' }
+      if (ghToken) headers['Authorization'] = `token ${ghToken}`
+
+      const manifests = ['package.json', 'requirements.txt']
+      const allFindings: any[] = []
+
+      for (const file of manifests) {
+        try {
+          const res = await fetch(`https://api.github.com/repos/${repo}/contents/${file}`, { headers })
+          if (!res.ok) continue
+          const content = await res.text()
+          allFindings.push(...scanDeps(content, file))
+        } catch { continue }
+      }
+
+      if (allFindings.length > 0) {
+        const vulns = allFindings.map(f => ({
+          org_id: user.orgId,
+          scan_id: scan.id,
+          check_id: f.checkId,
+          location_hash: f.locationHash,
+          title: f.title,
+          description: f.description,
+          category: f.category,
+          severity: f.severity,
+          status: 'open' as const,
+          location: f.location,
+          code_snippet: f.codeSnippet,
+          fix_prompt: f.fix,
+          ai_explanation: null,
+          source: f.source,
+        }))
+        await supabase.from('vulnerabilities').upsert(vulns, { onConflict: 'org_id,check_id,location_hash' })
+      }
+
+      const summary = {
+        critical: allFindings.filter(f => f.severity === 'critical').length,
+        high: allFindings.filter(f => f.severity === 'high').length,
+        medium: allFindings.filter(f => f.severity === 'medium').length,
+        low: allFindings.filter(f => f.severity === 'low').length,
+        info: 0,
+      }
+
+      await supabase.from('scans').update({
+        status: 'complete', summary, score: calculateScore(summary),
+      }).eq('id', scan.id)
+
+      return jsonOk({ scanId: scan.id, status: 'complete', findings: allFindings.length }, 201)
+    }
+
     return jsonOk({ scanId: scan.id, status: 'queued' }, 201)
   } catch (err) { return handleApiError(err) }
 }

@@ -31,6 +31,7 @@ export default function VulnsPage() {
   const [severity, setSeverity] = useState('')
   const [category, setCategory] = useState('')
   const [counts, setCounts] = useState({ critical: 0, high: 0, medium: 0, low: 0 })
+  const [selected, setSelected] = useState<Set<string>>(new Set())
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -53,6 +54,26 @@ export default function VulnsPage() {
   }, [status, severity, category])
 
   useEffect(() => { load() }, [load])
+
+  const toggleOne = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  const toggleAll = () => {
+    if (selected.size === vulns.length) setSelected(new Set())
+    else setSelected(new Set(vulns.map((v: any) => v.id)))
+  }
+
+  const handleBulk = async (action: 'resolve' | 'ignore') => {
+    if (selected.size === 0) return
+    await api.post('/api/vulns/bulk', { ids: [...selected], action })
+    setSelected(new Set())
+    load()
+  }
 
   const handleResolve = async (id: string) => {
     await api.patch(`/api/vulns/${id}/resolve`)
@@ -89,6 +110,17 @@ export default function VulnsPage() {
         onStatusChange={setStatus} onSeverityChange={setSeverity} onCategoryChange={setCategory}
       />
 
+      {/* Bulk action bar */}
+      {selected.size > 0 && (
+        <div className="flex items-center gap-3 bg-surface border border-border rounded-lg px-4 py-2.5">
+          <span className="text-[11px] text-white font-medium">{selected.size} selected</span>
+          <div className="flex-1" />
+          <button onClick={() => handleBulk('resolve')} className="text-[11px] text-green-400 hover:text-green-300 font-medium">Resolve all</button>
+          <button onClick={() => handleBulk('ignore')} className="text-[11px] text-muted hover:text-text font-medium">Ignore all</button>
+          <button onClick={() => setSelected(new Set())} className="text-[11px] text-muted hover:text-red">Clear</button>
+        </div>
+      )}
+
       {/* Vuln list */}
       <Panel>
         {loading ? (
@@ -98,9 +130,24 @@ export default function VulnsPage() {
         ) : vulns.length === 0 ? (
           <Empty message="No vulnerabilities match your filters." />
         ) : (
-          vulns.map(v => (
-            <VulnRow key={v.id} vuln={v} onResolve={handleResolve} onIgnore={handleIgnore} />
-          ))
+          <>
+            <div className="flex items-center gap-2 px-4 py-2 border-b border-border">
+              <input type="checkbox" checked={vulns.length > 0 && selected.size === vulns.length} onChange={toggleAll}
+                className="accent-red w-3.5 h-3.5" />
+              <span className="text-[10px] text-muted">Select all</span>
+            </div>
+            {vulns.map(v => (
+              <div key={v.id} className="flex items-start gap-2">
+                <div className="pt-3 pl-3">
+                  <input type="checkbox" checked={selected.has(v.id)} onChange={() => toggleOne(v.id)}
+                    className="accent-red w-3.5 h-3.5" />
+                </div>
+                <div className="flex-1">
+                  <VulnRow vuln={v} onResolve={handleResolve} onIgnore={handleIgnore} />
+                </div>
+              </div>
+            ))}
+          </>
         )}
       </Panel>
     </div>
