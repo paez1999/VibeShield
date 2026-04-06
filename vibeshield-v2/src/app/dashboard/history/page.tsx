@@ -70,7 +70,7 @@ export default function HistoryPage() {
               const status: string = (scan.status ?? 'complete').toLowerCase()
               const score: string | undefined = scan.score
               const findingsCount: number =
-                scan.findings_count ?? scan.total_findings ?? 0
+                scan.progress?.findings ?? 0
               const target: string =
                 scan.repo ?? scan.target ?? scan.url ?? '—'
               const ts: string = scan.created_at ?? scan.started_at ?? ''
@@ -97,12 +97,12 @@ export default function HistoryPage() {
 
                   {/* Status indicator */}
                   <span className="flex items-center gap-1.5 text-[10px] whitespace-nowrap">
-                    {status === 'running' || status === 'pending' ? (
+                    {['queued', 'fetching', 'scanning', 'analyzing'].includes(status) ? (
                       <>
                         <Spinner size={10} />
                         <span className="text-muted">Running</span>
                       </>
-                    ) : status === 'failed' || status === 'error' ? (
+                    ) : status === 'failed' ? (
                       <>
                         <span className="w-2 h-2 rounded-full bg-red flex-shrink-0" />
                         <span className="text-red">Failed</span>

@@ -16,7 +16,7 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
-      <div className="w-full max-w-md bg-surface border border-border rounded-lg p-10 animate-fadeIn">
+      <div className="w-full max-w-md bg-surface border border-border rounded-lg p-10 animate-fade-in">
         {/* Logo */}
         <div className="flex items-center gap-3 mb-8">
           <div className="w-8 h-8 bg-red rounded-md flex items-center justify-center">

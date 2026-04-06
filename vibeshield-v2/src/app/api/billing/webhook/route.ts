@@ -3,17 +3,21 @@ import { jsonOk, jsonError } from '@/lib/api-utils'
 import { createSupabaseAdmin } from '@/lib/supabase/server'
 import Stripe from 'stripe'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
+let _stripe: Stripe | undefined
+function getStripe() {
+  if (!_stripe) _stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+  return _stripe
+}
 
 export async function POST(req: NextRequest) {
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
   const body = await req.text()
   const signature = req.headers.get('stripe-signature')
   if (!signature) return jsonError('Missing signature', 400)
 
   let event: Stripe.Event
   try {
-    event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
+    event = getStripe().webhooks.constructEvent(body, signature, webhookSecret)
   } catch (err) {
     console.error('[stripe-webhook] Signature verification failed:', err)
     return jsonError('Invalid signature', 400)

@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase/client'
 import type { User, Session } from '@supabase/supabase-js'
 
@@ -28,7 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
-  const supabase = createSupabaseBrowser()
+  const supabase = useMemo(() => createSupabaseBrowser(), [])
 
   useEffect(() => {
     // Get initial session

@@ -6,6 +6,12 @@ export interface AuthUser {
   orgId: string | null
 }
 
+export interface AuthenticatedUser {
+  id: string
+  email: string
+  orgId: string
+}
+
 export async function getAuthUser(): Promise<AuthUser | null> {
   const supabase = await createSupabaseServer()
   const { data: { user }, error } = await supabase.auth.getUser()
@@ -24,9 +30,9 @@ export async function getAuthUser(): Promise<AuthUser | null> {
   }
 }
 
-export async function requireAuth(): Promise<AuthUser> {
+export async function requireAuth(): Promise<AuthenticatedUser> {
   const user = await getAuthUser()
   if (!user) throw new Error('UNAUTHORIZED')
   if (!user.orgId) throw new Error('NO_ORG')
-  return user
+  return user as AuthenticatedUser
 }

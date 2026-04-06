@@ -3,6 +3,7 @@ import { createSupabaseServer } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/supabase/middleware'
 import { jsonOk, jsonError, handleApiError } from '@/lib/api-utils'
 import { z } from 'zod'
+import { calculateScore } from '@/domain/services/scoreCalculator'
 
 export async function GET(req: NextRequest) {
   try {
@@ -95,7 +96,7 @@ export async function POST(req: NextRequest) {
           ai_explanation: null,
           source: f.source,
         }))
-        await supabase.from('vulnerabilities').upsert(vulns, { onConflict: 'location_hash,scan_id' })
+        await supabase.from('vulnerabilities').upsert(vulns, { onConflict: 'org_id,check_id,location_hash' })
       }
 
       const summary = {
@@ -107,12 +108,12 @@ export async function POST(req: NextRequest) {
       }
 
       await supabase.from('scans').update({
-        status: 'done',
+        status: 'complete',
         summary,
-        score: Math.max(0, 100 - summary.critical * 20 - summary.high * 10 - summary.medium * 3),
+        score: calculateScore(summary),
       }).eq('id', scan.id)
 
-      return jsonOk({ scanId: scan.id, status: 'done', findings: result.findings.length, endpoints: result.endpoints }, 201)
+      return jsonOk({ scanId: scan.id, status: 'complete', findings: result.findings.length, endpoints: result.endpoints }, 201)
     }
 
     return jsonOk({ scanId: scan.id, status: 'queued' }, 201)

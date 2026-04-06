@@ -12,8 +12,12 @@ import { Spinner } from '@/components/ui/spinner'
 import { Empty } from '@/components/ui/empty'
 
 function scoreFromSummary(s: { critical: number; high: number; medium: number; low: number }) {
-  const deduction = s.critical * 20 + s.high * 10 + s.medium * 4 + s.low
-  return Math.max(0, 100 - deduction)
+  const weighted = s.critical * 10 + s.high * 5 + s.medium * 2 + s.low * 0.5
+  if (weighted === 0) return { score: 100, grade: 'A' }
+  if (weighted <= 5) return { score: 80, grade: 'B' }
+  if (weighted <= 15) return { score: 55, grade: 'C' }
+  if (weighted <= 30) return { score: 30, grade: 'D' }
+  return { score: 10, grade: 'F' }
 }
 
 export default function DashboardPage() {
@@ -35,7 +39,7 @@ export default function DashboardPage() {
     ]).finally(() => setLoading(false))
   }, [])
 
-  const score = scoreFromSummary(summary)
+  const { score, grade } = scoreFromSummary(summary)
   const scoreColor = score < 40 ? 'text-red' : score < 70 ? 'text-amber' : 'text-green'
 
   const handleQuickScan = async (e: React.FormEvent) => {
@@ -66,7 +70,7 @@ export default function DashboardPage() {
   )
 
   return (
-    <div className="max-w-[1100px] animate-fadeIn flex flex-col gap-5">
+    <div className="max-w-[1100px] animate-fade-in flex flex-col gap-5">
       <PageHeader
         subtitle="SECURITY OVERVIEW"
         title="Dashboard"
@@ -85,7 +89,7 @@ export default function DashboardPage() {
         {/* Score card */}
         <div className="bg-surface border border-border rounded-lg p-4 flex flex-col gap-3">
           <div className="text-[10px] text-muted tracking-widest">SECURITY SCORE</div>
-          <div className={`font-display text-[52px] font-extrabold leading-none ${scoreColor}`}>{score}</div>
+          <div className={`font-display text-[52px] font-extrabold leading-none ${scoreColor}`}>{grade}</div>
           <ScoreBar score={score} />
           <div className={`flex items-center gap-1.5 text-[11px] ${scoreColor}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${score < 40 ? 'bg-red' : score < 70 ? 'bg-amber' : 'bg-green'} animate-pulse`} />

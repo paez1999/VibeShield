@@ -4,7 +4,11 @@ import { requireAuth } from '@/lib/supabase/middleware'
 import { jsonOk, jsonError, handleApiError } from '@/lib/api-utils'
 import Stripe from 'stripe'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+let _stripe: Stripe | undefined
+function getStripe() {
+  if (!_stripe) _stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+  return _stripe
+}
 
 // POST /api/billing/portal — create customer portal session
 export async function POST(req: NextRequest) {
@@ -19,7 +23,7 @@ export async function POST(req: NextRequest) {
     }
 
     const origin = req.headers.get('origin') ?? 'http://localhost:3000'
-    const session = await stripe.billingPortal.sessions.create({
+    const session = await getStripe().billingPortal.sessions.create({
       customer: org.stripe_customer_id,
       return_url: `${origin}/dashboard/billing`,
     })
