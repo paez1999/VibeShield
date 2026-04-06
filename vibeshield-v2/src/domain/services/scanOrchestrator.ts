@@ -7,7 +7,7 @@ import type { NewVulnerability, SeveritySummary } from '@/domain/entities/vulner
 import { scanCode, type CodeFinding } from './codeScanner'
 import { scanSecrets, type SecretFinding } from './secretScanner'
 import { calculateScore } from './scoreCalculator'
-import { ScanLimitError, BranchNotFoundError } from '@/shared/errors'
+import { ScanLimitError, BranchNotFoundError } from '@/domain/errors'
 
 // ── File filtering constants ──────────────────────────────────────────────────
 

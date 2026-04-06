@@ -1,14 +1,14 @@
 import Stripe from 'stripe'
 import type { BillingService, CanScanResult } from '@/domain/ports/billingService'
-import type { Plan, PlanType } from '@/domain/entities/org'
-import type { SupabaseOrgStore } from '@/adapters/db/supabaseOrgStore'
+import { PLAN_CONFIG, type Plan, type PlanType } from '@/domain/entities/org'
+import type { OrgStore } from '@/domain/ports/orgStore'
 
 export class StripeBillingService implements BillingService {
   private readonly stripe: Stripe
 
   constructor(
     stripeSecretKey: string,
-    private readonly orgStore: SupabaseOrgStore,
+    private readonly orgStore: OrgStore,
   ) {
     this.stripe = new Stripe(stripeSecretKey)
   }
@@ -59,14 +59,7 @@ export class StripeBillingService implements BillingService {
       return { type: 'free', includesAi: false, includesDetails: false, scanLimit: null }
     }
 
-    const config: Record<string, Omit<Plan, 'type'>> = {
-      trial: { includesAi: true, includesDetails: true, scanLimit: 3 },
-      free: { includesAi: false, includesDetails: false, scanLimit: null },
-      pro: { includesAi: true, includesDetails: true, scanLimit: null },
-      team: { includesAi: true, includesDetails: true, scanLimit: null },
-    }
-
-    const planConfig = config[org.plan] ?? config.free
+    const planConfig = PLAN_CONFIG[org.plan as PlanType] ?? PLAN_CONFIG.free
     return { type: org.plan as PlanType, ...planConfig }
   }
 }

@@ -1,7 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Org, PlanType } from '../../domain/entities/org'
+import type { OrgStore } from '@/domain/ports/orgStore'
 
-export class SupabaseOrgStore {
+export class SupabaseOrgStore implements OrgStore {
   constructor(private readonly db: SupabaseClient) {}
 
   async getById(id: string): Promise<Org | null> {
