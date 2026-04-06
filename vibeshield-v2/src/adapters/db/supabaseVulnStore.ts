@@ -91,12 +91,14 @@ export class SupabaseVulnStore implements VulnStore {
   }
 
   async autoResolveStale(orgId: string, scanId: string, currentLocationHashes: string[]): Promise<number> {
+    if (currentLocationHashes.length === 0) return 0
+
     const { data, error } = await this.db
       .from('vulnerabilities')
       .update({ status: 'auto_resolved' })
       .eq('org_id', orgId)
       .eq('status', 'open')
-      .not('location_hash', 'in', `(${currentLocationHashes.map((h) => `"${h}"`).join(',')})`)
+      .not('location_hash', 'in', `(${currentLocationHashes.join(',')})`)
       .select('id')
 
     if (error) throw error

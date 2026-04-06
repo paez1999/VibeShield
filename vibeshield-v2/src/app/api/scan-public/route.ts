@@ -6,6 +6,31 @@ import { calculateScore } from '@/domain/services/scoreCalculator'
 import type { SeveritySummary } from '@/domain/entities/vulnerability'
 import { z } from 'zod'
 
+// Simple in-memory rate limiter
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
+const RATE_LIMIT_MAX = 5       // max requests per window
+const RATE_LIMIT_WINDOW = 60_000  // 1 minute
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now()
+  const entry = rateLimitMap.get(ip)
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW })
+    return true
+  }
+  if (entry.count >= RATE_LIMIT_MAX) return false
+  entry.count++
+  return true
+}
+
+// Clean up stale entries every 5 minutes
+setInterval(() => {
+  const now = Date.now()
+  for (const [key, val] of rateLimitMap) {
+    if (now > val.resetAt) rateLimitMap.delete(key)
+  }
+}, 5 * 60_000)
+
 const PublicScanSchema = z.object({
   repo: z.string().regex(/^[\w.-]+\/[\w.-]+$/),
   ref: z.string().default('main'),
@@ -18,6 +43,11 @@ const MAX_FILE_SIZE = 128 * 1024
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? req.headers.get('x-real-ip') ?? 'unknown'
+    if (!checkRateLimit(ip)) {
+      return jsonError('Rate limit exceeded. Try again in a minute.', 429)
+    }
+
     const body = await req.json()
     const parsed = PublicScanSchema.safeParse(body)
     if (!parsed.success) return jsonError('Invalid parameters. Expected: { repo: "owner/repo" }', 400)

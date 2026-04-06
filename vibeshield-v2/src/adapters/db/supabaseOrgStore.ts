@@ -13,21 +13,7 @@ export class SupabaseOrgStore {
   }
 
   async decrementTrialScans(id: string): Promise<void> {
-    const { data: current, error: fetchError } = await this.db
-      .from('orgs')
-      .select('trial_scans_remaining')
-      .eq('id', id)
-      .single()
-
-    if (fetchError) throw fetchError
-
-    const next = Math.max(0, (current.trial_scans_remaining as number) - 1)
-
-    const { error } = await this.db
-      .from('orgs')
-      .update({ trial_scans_remaining: next })
-      .eq('id', id)
-
+    const { error } = await this.db.rpc('decrement_trial_scans', { p_org_id: id })
     if (error) throw error
   }
 
