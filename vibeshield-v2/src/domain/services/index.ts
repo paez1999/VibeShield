@@ -1,0 +1,4 @@
+export { scanCode, type CodeFinding } from './codeScanner'
+export { scanSecrets, type SecretFinding } from './secretScanner'
+export { calculateScore } from './scoreCalculator'
+export { getChecksForFile, ALL_CHECKS, type Check } from './checks'
