@@ -5,6 +5,7 @@ import type { ScanStore } from '@/domain/ports/scanStore'
 import type { VulnStore } from '@/domain/ports/vulnStore'
 import type { AiAnalyzer } from '@/domain/ports/aiAnalyzer'
 import type { BillingService } from '@/domain/ports/billingService'
+import type { Notifier } from '@/domain/ports/notifier'
 import { ScanLimitError, BranchNotFoundError } from '@/shared/errors'
 
 // ── Mock factories ────────────────────────────────────────────────────────────
@@ -193,5 +194,34 @@ describe('ScanOrchestrator', () => {
     await orchestrator.runCodeScan('org-1', 'user-1', 'owner/repo', 'main')
 
     expect(billing.recordScan).toHaveBeenCalledWith('org-1')
+  })
+
+  // 11. notifier is called when findings include critical/high vulns
+  it('calls notifier when findings include high-severity vulns', async () => {
+    const vulnerableContent = `db.query("SELECT * FROM users WHERE id = " + req.body.id)`
+    codeRepo = makeCodeRepo({
+      fetchFiles: vi.fn().mockResolvedValue([
+        { path: 'src/index.ts', content: vulnerableContent },
+      ]),
+    })
+    const notifier: Notifier = { notify: vi.fn().mockResolvedValue(undefined) }
+    orchestrator = new ScanOrchestrator(codeRepo, scanStore, vulnStore, aiAnalyzer, billing, notifier)
+
+    await orchestrator.runCodeScan('org-1', 'user-1', 'owner/repo', 'main')
+
+    expect(notifier.notify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        target: 'owner/repo',
+        scanType: 'code',
+      }),
+    )
+  })
+
+  // 12. scan completes even without notifier
+  it('completes scan when notifier is undefined', async () => {
+    orchestrator = new ScanOrchestrator(codeRepo, scanStore, vulnStore, aiAnalyzer, billing)
+    const scanId = await orchestrator.runCodeScan('org-1', 'user-1', 'owner/repo', 'main')
+    expect(scanId).toBe('scan-id-1')
+    expect(scanStore.complete).toHaveBeenCalled()
   })
 })

@@ -3,6 +3,7 @@ import type { ScanStore } from '@/domain/ports/scanStore'
 import type { VulnStore } from '@/domain/ports/vulnStore'
 import type { AiAnalyzer, Finding } from '@/domain/ports/aiAnalyzer'
 import type { BillingService } from '@/domain/ports/billingService'
+import type { Notifier } from '@/domain/ports/notifier'
 import type { NewVulnerability, SeveritySummary } from '@/domain/entities/vulnerability'
 import { scanCode, type CodeFinding } from './codeScanner'
 import { scanSecrets, type SecretFinding } from './secretScanner'
@@ -66,6 +67,7 @@ export class ScanOrchestrator {
     private readonly vulnStore: VulnStore,
     private readonly aiAnalyzer: AiAnalyzer,
     private readonly billing: BillingService,
+    private readonly notifier?: Notifier,
   ) {}
 
   async runCodeScan(orgId: string, userId: string, repo: string, ref: string): Promise<string> {
@@ -224,7 +226,23 @@ export class ScanOrchestrator {
     const durationMs = Date.now() - startTime
     await this.scanStore.complete(scanId, score, summary, durationMs)
 
-    // Step 10: Record usage
+    // Step 10: Notify (optional, never breaks scan)
+    if (this.notifier) {
+      const topFindings = allVulns
+        .filter(v => v.severity === 'critical' || v.severity === 'high')
+        .slice(0, 5)
+        .map(v => ({ title: v.title, severity: v.severity, location: v.location ?? null }))
+      await this.notifier.notify({
+        target: repo,
+        scanType: 'code',
+        totalFindings: allVulns.length,
+        critical: summary.critical,
+        high: summary.high,
+        topFindings,
+      }).catch(() => {})
+    }
+
+    // Step 11: Record usage
     await this.billing.recordScan(orgId)
   }
 }
